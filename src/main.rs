@@ -49,7 +49,7 @@ impl Vaktija {
         let idx = self.vakat.iter()
             .map(|x| NaiveTime::parse_from_str(x, "%H:%M").unwrap())
             .position(|x| x > now)
-            .unwrap();
+            .unwrap_or(0);
 
         let until_next = NaiveTime::parse_from_str(&self.vakat[idx], "%H:%M").unwrap() - now;
         
