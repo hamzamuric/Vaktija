@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
 use serde::Deserialize;
 use chrono::prelude::*;
 use chrono::Duration;
@@ -69,10 +71,48 @@ fn namaz_name(namaz: usize) -> String {
     }.to_owned()
 }
 
+fn get_netword_data() -> Result<String, Box<dyn Error>> {
+    let body = reqwest::get("https://api.vaktija.ba/vaktija/v1/110")?.text()?;
+    Ok(body)
+}
+
+fn get_data() -> Result<String, Box<dyn Error>> {
+    match File::open(".vaktija_cache") {
+        Err(_) => {
+            let mut f = match File::create(".vaktija_cache") {
+                Ok(file) => file,
+                Err(why) => panic!("file erol {}", why),
+            };
+            let n_data = get_netword_data()?;
+            f.write_all(n_data.clone().as_bytes())?;
+            return Ok(n_data);
+        }
+        Ok(mut f) => {
+            let metadata = f.metadata()?;
+            let last_modified = metadata.modified()?;
+            let last_modified: DateTime<Utc> = DateTime::from(last_modified);
+            let last_modified_date = NaiveDate::from_ymd(last_modified.year(), last_modified.month(), last_modified.day());
+            let now = Local::now();
+            let today = NaiveDate::from_ymd(now.year(), now.month(), now.day());
+
+            if last_modified_date != today {
+                let n_data = get_netword_data()?;
+                f.write_all(n_data.clone().as_bytes())?;
+                return Ok(n_data);
+            }
+
+            let mut data = String::new();
+            f.read_to_string(&mut data)?;
+
+            Ok(data)
+        }
+    }
+}
+
 
 fn main() -> MainResult {
-    let body = reqwest::get("https://api.vaktija.ba/vaktija/v1/110")?.text()?;
-    let v: Vaktija = serde_json::from_str(&body)?;
+    let data = get_data()?;
+    let v: Vaktija = serde_json::from_str(&data)?;
     v.show_vaktija();
 
     Ok(())
