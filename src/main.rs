@@ -1,6 +1,9 @@
 use std::error::Error;
 use std::fs::File;
+use std::path::Path;
 use std::io::prelude::*;
+use std::env;
+
 use serde::Deserialize;
 use chrono::prelude::*;
 use chrono::Duration;
@@ -71,19 +74,19 @@ fn namaz_name(namaz: usize) -> String {
     }.to_owned()
 }
 
-fn get_netword_data() -> Result<String, Box<dyn Error>> {
+fn get_network_data() -> Result<String, Box<dyn Error>> {
     let body = reqwest::get("https://api.vaktija.ba/vaktija/v1/110")?.text()?;
     Ok(body)
 }
 
-fn get_data() -> Result<String, Box<dyn Error>> {
-    match File::open(".vaktija_cache") {
+fn get_data(cache_file: &Path) -> Result<String, Box<dyn Error>> {
+    match File::open(cache_file) {
         Err(_) => {
-            let mut f = match File::create(".vaktija_cache") {
+            let mut f = match File::create(cache_file) {
                 Ok(file) => file,
-                Err(why) => panic!("file erol {}", why),
+                Err(why) => panic!("file error {}", why),
             };
-            let n_data = get_netword_data()?;
+            let n_data = get_network_data()?;
             f.write_all(n_data.clone().as_bytes())?;
             return Ok(n_data);
         }
@@ -91,12 +94,12 @@ fn get_data() -> Result<String, Box<dyn Error>> {
             let metadata = f.metadata()?;
             let last_modified = metadata.modified()?;
             let last_modified: DateTime<Utc> = DateTime::from(last_modified);
-            let last_modified_date = NaiveDate::from_ymd(last_modified.year(), last_modified.month(), last_modified.day());
+            let last_modified_date = NaiveDate::from_ymd(last_modified.year(), last_modified.month(), last_modified.day() + 1);
             let now = Local::now();
             let today = NaiveDate::from_ymd(now.year(), now.month(), now.day());
 
             if last_modified_date != today {
-                let n_data = get_netword_data()?;
+                let n_data = get_network_data()?;
                 f.write_all(n_data.clone().as_bytes())?;
                 return Ok(n_data);
             }
@@ -111,7 +114,9 @@ fn get_data() -> Result<String, Box<dyn Error>> {
 
 
 fn main() -> MainResult {
-    let data = get_data()?;
+    let path_str = env::var("HOME")?;
+    let path = Path::new(&path_str).join(".vaktija_cache");
+    let data = get_data(path.as_path())?;
     let v: Vaktija = serde_json::from_str(&data)?;
     v.show_vaktija();
 
