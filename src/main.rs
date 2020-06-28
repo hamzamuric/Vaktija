@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::io::prelude::*;
 use std::env;
@@ -80,7 +80,7 @@ fn get_network_data() -> Result<String, Box<dyn Error>> {
 }
 
 fn get_data(cache_file: &Path) -> Result<String, Box<dyn Error>> {
-    match File::open(cache_file) {
+    match OpenOptions::new().read(true).write(true).open(cache_file) {
         Err(_) => {
             let mut f = match File::create(cache_file) {
                 Ok(file) => file,
