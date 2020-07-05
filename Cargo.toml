@@ -3,6 +3,8 @@ name = "vaktija"
 version = "0.1.0"
 authors = ["Hamza Muric <hamzamuric9@gmail.com>"]
 edition = "2018"
+description = "Vaktija za novi pazar"
+license = "MIT"
 
 [dependencies]
 reqwest = "*"
